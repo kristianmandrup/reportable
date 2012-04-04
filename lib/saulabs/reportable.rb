@@ -58,6 +58,10 @@ module Saulabs
             orm = case self.class
             when ActiveRecord::Base
               :active_record
+            when DataMapper::Resource
+              raise "We are currently working towards supporting DataMapper. Please help out ;)"
+            when Mongoid::Document
+              raise "We are planning to support Mongoid. Please help out ;)"
             else
               raise "ORM currently not supported"
             end

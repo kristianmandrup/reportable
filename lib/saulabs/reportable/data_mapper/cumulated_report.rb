@@ -1,6 +1,6 @@
 module Saulabs
   module Reportable
-    module ActiveRecord
+    module DataMapper
       # A special report class that cumulates all data (see {Saulabs::Reportable::Report})
       #
       # @example Cumulated reports as opposed to regular reports

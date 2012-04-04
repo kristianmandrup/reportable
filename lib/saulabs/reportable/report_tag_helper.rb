@@ -6,12 +6,40 @@ module Saulabs
 
     module ReportTagHelper
 
+      # require qq.fileuploader (see vendor/assets/javascript)
+      def report_photo_uploader dom_id
+        %Q{
+var photo_uploader = new qq.FileUploader({
+  element: document.getElementById('#{dom_id}'),
+  multiple: true,
+  action: '/assets',
+  allowedExtensions: ['png', 'gif', 'jpg', 'jpeg'],
+  sizeLimit: 2097152,
+  params: {assetable_type: 'Report', klass: 'Picture', collection: true}
+});
+}
+      end
+
+      # get image in request.body.read of post action (typically create)
       def report_img_server_upload dom_id, options = {:path = 'reportable/img_upload', :format => :png}
-          %Q{var canvasData = testCanvas.toDataURL("image/#{format}");
+          type          = options[:type]
+          name          = options[:name]
+          user          = options[:user]
+          report_id     = options[:report_id]
+          graph_id      = options[:graph_id]
+          format        = options[:format]
+
+          %Q{var canvasData = #{dom_id}.toDataURL("image/#{format}");
 var ajax = new XMLHttpRequest();
 ajax.open("POST",'#{path}',false);
 ajax.setRequestHeader('Content-Type', 'application/upload');
-ajax.send(canvasData );
+ajax.setRequestHeader('name', '#{file_name}');
+ajax.setRequestHeader('user', '#{user}');
+ajax.setRequestHeader('format', '#{format}');
+ajax.setRequestHeader('report-number', '#{report_id}');
+ajax.setRequestHeader('report-type', '#{type}');
+ajax.setRequestHeader('graph-number', '#{graph_id}');
+ajax.send(canvasData);
         }
       end
 

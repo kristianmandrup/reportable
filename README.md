@@ -84,43 +84,49 @@ Save report image to server
 
 From: http://permadi.com/blog/2010/10/html5-saving-canvas-image-data-using-php-and-ajax/
 
-We should have functionality to save the image to the server
+To save the image to the server as raw image data:
 
   var canvasData = testCanvas.toDataURL("image/png");
   var ajax = new XMLHttpRequest();
-  ajax.open("POST",'testSave.php',false);
+  ajax.open("POST",'reports/image_uploader',false);
   ajax.setRequestHeader('Content-Type', 'application/upload');
+  ajax.setRequestHeader('format', 'png');
+  ajax.setRequestHeader('user', 'mikey');
+  ajax.setRequestHeader('name', 'my-report');
+  ajax.setRequestHeader('report-id', '1');
+  ajax.setRequestHeader('graph-id', '3');
   ajax.send(canvasData );  
 
 A helper is provided to do this:
 
   <%= report_img_server_upload 'testCanvas', :path = 'reportable/img_upload' %>
 
-On the server side, simply process the upload data similar to the following PHP code
+On the server side, simply process the upload data in a #create method of a controller
+The following could perhaps be a template:
+  
+    require "base64"
 
-  <?php
-  if (isset($GLOBALS["HTTP_RAW_POST_DATA"]))
-  {
-      // Get the data
-      $imageData=$GLOBALS['HTTP_RAW_POST_DATA'];
-   
-      // Remove the headers (data:,) part.  
-      // A real application should use them according to needs such as to check image type
-      $filteredData=substr($imageData, strpos($imageData, ",")+1);
-   
-      // Need to decode before saving since the data we received is already base64 encoded
-      $unencodedData=base64_decode($filteredData);
-   
-      //echo "unencodedData".$unencodedData;
-   
-      // Save file.  This example uses a hard coded filename for testing, 
-      // but a real application can specify filename in POST variable
-      $fp = fopen( 'test.png', 'wb' );
-      fwrite( $fp, $unencodedData);
-      fclose( $fp );
-  }
-  ?>
+    module Reports
+      class ImageUploader < ApplicationController
+        def create
+          unencoded_image_data = Base64.decode64(response.body.read)
 
+          # use request header info to generate unique filename we can use later
+          file_name = create_report_img_name(response.header)
+
+          File.open(file_name, 'wb') do |f|
+            f.write unencoded_image_data
+          end
+        end
+
+        protected
+
+        def create_report_img_name(hash)
+          name = [hash['user'], hash['report-id'], hash['graph-id']].join('-')
+          File.join(path, "#{name}.#{hash['format']}"
+        end
+      end
+    end
 
 Installation
 ------------

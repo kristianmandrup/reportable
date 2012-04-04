@@ -8,6 +8,17 @@ module Saulabs
       require 'saulabs/reportable/active_record'
     end
 
+    class << self
+      def last_report_options= options = {}
+        raise ArgumentError, "Options must be a kind of Hash" unless options.kind_of?(Hash)
+        @last_report_options = options
+      end
+
+      def last_report_options
+        @last_report_options ||= {}
+      end
+    end
+
     # The adapter connects Reportable and Rails.
     #
     module RailsAdapter

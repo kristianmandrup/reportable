@@ -52,6 +52,75 @@ Reportable provides helper methods to generate a sparkline image from this data 
 
 For other options to generate sparklines see the [API docs](http://rdoc.info/projects/saulabs/reportable).
 
+Flot report
+-----------
+
+  <%= flot_report_tag(User.registrations_report) %>
+
+Raphael report
+-----------
+
+  <%= raphael_report_tag(User.registrations_report, { :width => 200, :height => 100, :format => 'div(100).to_i' }, { :vertical_label_unit => 'registrations' }) %>
+
+
+Save Report as Image file
+-------------------------
+
+  <%= report_to_img_save :google %>
+
+  <%= report_to_img_save :raphael, :format => :png %>
+
+  <%= report_to_img_save :flot, :scale => true, :width => 100, :height => 100, :format => :jpeg %>
+
+Return DOM img element variable
+-------------------------------
+
+  <%= $('.container').append($(" + report_to_img_var(:google) + ")); %>
+
+Or something similar... The _$(img_var)_ should wrap the DOM element as a jQuery compatible element for use with the jQuery API.
+
+Save report image to server
+---------------------------
+
+From: http://permadi.com/blog/2010/10/html5-saving-canvas-image-data-using-php-and-ajax/
+
+We should have functionality to save the image to the server
+
+  var canvasData = testCanvas.toDataURL("image/png");
+  var ajax = new XMLHttpRequest();
+  ajax.open("POST",'testSave.php',false);
+  ajax.setRequestHeader('Content-Type', 'application/upload');
+  ajax.send(canvasData );  
+
+A helper is provided to do this:
+
+  <%= report_img_server_upload 'testCanvas', :path = 'reportable/img_upload' %>
+
+On the server side, simply process the upload data similar to the following PHP code
+
+  <?php
+  if (isset($GLOBALS["HTTP_RAW_POST_DATA"]))
+  {
+      // Get the data
+      $imageData=$GLOBALS['HTTP_RAW_POST_DATA'];
+   
+      // Remove the headers (data:,) part.  
+      // A real application should use them according to needs such as to check image type
+      $filteredData=substr($imageData, strpos($imageData, ",")+1);
+   
+      // Need to decode before saving since the data we received is already base64 encoded
+      $unencodedData=base64_decode($filteredData);
+   
+      //echo "unencodedData".$unencodedData;
+   
+      // Save file.  This example uses a hard coded filename for testing, 
+      // but a real application can specify filename in POST variable
+      $fp = fopen( 'test.png', 'wb' );
+      fwrite( $fp, $unencodedData);
+      fclose( $fp );
+  }
+  ?>
+
 
 Installation
 ------------

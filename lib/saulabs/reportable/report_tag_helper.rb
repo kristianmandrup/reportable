@@ -6,6 +6,53 @@ module Saulabs
 
     module ReportTagHelper
 
+      def report_img_server_upload dom_id, options = {:path = 'reportable/img_upload', :format => :png}
+          %Q{var canvasData = testCanvas.toDataURL("image/#{format}");
+var ajax = new XMLHttpRequest();
+ajax.open("POST",'#{path}',false);
+ajax.setRequestHeader('Content-Type', 'application/upload');
+ajax.send(canvasData );
+        }
+      end
+
+      # Will save image or return <img> element variable (default: save)
+      # Options:
+      #   - type (report type, either google, raphael, or flot - default: raphael)
+      #   - format (image format (mime code) - default: png)
+      #   - as_element (create and return <img> element - default: false)
+      #   - scale (true|false)
+      #   - width (for scaling)
+      #   - height (for scaling)
+      #   - img_var (var name to use for image element returned - override default: oImg_[format]_[type])
+      def report_to_image options = {:type => :raphael, :format => :png}
+        options = report_options(options)
+        canvas2img options[:dom_id], options
+      end
+
+      # will prompt the user to save the image as PNG.
+      # Options:
+      #   - type (report type, either google, raphael, or flot - default: raphael)
+      #   - format (image format (mime code) - default: png)
+      #   - scale (true|false)
+      #   - width (for scaling)
+      #   - height (for scaling)
+      def report_to_img_save options = {:type => :raphael, :format => :png}
+        options = report_options(options)
+        canvas2img options[:dom_id], options.merge(:as_element => false)
+      end
+
+      # Will return the image variable name for the image as an <img> element
+      # Options:
+      #   - type (report type, either google, raphael, or flot - default: raphael)
+      #   - format (image format (mime code) - default: png)
+      #   - scale (true|false)
+      #   - width (for scaling)
+      #   - height (for scaling)
+      def report_to_img_var options = {:type => :raphael, :img => :png}
+        options = report_options(options)
+        canvas2img options[:dom_id], options.merge(:as_element => true)
+      end
+        
       # Renders a sparkline with the given data using the google drawing api.
       #
       # @param [Array<Array<DateTime, Float>>] data
@@ -37,6 +84,9 @@ module Saulabs
       #
       def google_report_tag(data, options = {})
         options.reverse_merge!(Config.google_options)
+
+        Saulabs::Reportable.last_report_options[:google] = options
+
         data = data.to_a.collect { |d| d[1] }
         labels = ''
         unless options[:labels].empty?
@@ -88,6 +138,9 @@ module Saulabs
         options.reverse_merge!(Config.raphael_options.slice(:width, :height, :format))
         options.reverse_merge!(:dom_id => default_dom_id)
         raphael_options.reverse_merge!(Config.raphael_options.except(:width, :height, :format))
+
+        Saulabs::Reportable.last_report_options[:raphael] = options
+
         %Q{<div id="#{options[:dom_id]}" style="width:#{options[:width]}px;height:#{options[:height]}px;"></div>
         <script type="text\/javascript" charset="utf-8">
           var graph = Raphael('#{options[:dom_id]}');
@@ -143,6 +196,9 @@ module Saulabs
         options.reverse_merge!(Config.flot_options.slice(:width, :height, :format))
         options.reverse_merge!(:dom_id => default_dom_id)
         flot_options.reverse_merge!(Config.flot_options.except(:width, :height, :format))
+
+        Saulabs::Reportable.last_report_options[:flot] = options
+
         %Q{<div id="#{options[:dom_id]}" style="width:#{options[:width]}px;height:#{options[:height]}px;"></div>
         <script type="text\/javascript" charset="utf-8">
         $(function() {
@@ -155,7 +211,43 @@ module Saulabs
         });
         </script>}
       end
-    
+
+      protected
+
+      def canvas2img dom_id, options = {:format => :png)
+        insert_as_element = options[:as_element] || false
+        scale = options[:scale] || 'false'
+        scaling = ',' + [options[:width], options[:height]].join(',') if scale == true
+
+        img_var = options[:img_var] || "oImg_#{format}_#{options[:type]}" if insert_as_element
+        lside = img_var ? "var #{img_var} = " : ''
+
+        script = %Q{var oCanvas = document.getElementById('#{dom_id}');
+#{lside} Canvas2Image.saveAs#{options[:img].to_s.upcase}(oCanvas, #{insert_as_element}#{scaling});
+}
+        img_var ? img_var : script
+      end
+
+      # return options with dom_id of Canvas element of last report
+      def report_options options = {:type => :raphael, :img => :png}
+        raise ArgumentError, "Invalid report type, must be one of #{valid_reportable_types}, was #{options[:type]}" unless valid_reportable_type?(options[:type]) 
+        report_type = options[:type] || :raphael
+        last_report_options = Saulabs::Reportable.last_report_options[report_type]
+
+        raise "No report could be found for #{report_type}" if last_report_options.empty?
+
+        dom_id = last_report_options[:dom_id]
+        options.merge!(:dom_id => dom_id, :width => last_report_options[:width], :height => last_report_options[:height])
+        options
+      end
+
+      def valid_reportable_type? type
+        valid_reportable_types.include?(type.to_sym)
+      end
+
+      def valid_reportable_types
+        [:raphael, :flot, :google]
+      end    
     end
   end
 

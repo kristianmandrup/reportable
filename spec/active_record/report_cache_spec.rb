@@ -1,5 +1,26 @@
 require 'spec_helper'
 
+Report = Saulabs::Reportable::ActiveRecord::Report
+ReportCache = Saulabs::Reportable::ActiveRecord::ReportCache
+Grouping = Saulabs::Reportable::ActiveRecord::Grouping
+ReportingPeriod = Saulabs::Reportable::ActiveRecord::ReportingPeriod
+
+def db_connection
+  ActiveRecord::Base.connection
+end
+
+def create_reporting_period *args
+  ReportingPeriod.new *args    
+end
+
+def create_report *args
+  Report.new *args
+end
+
+def create_grouping *args
+  Grouping.new *args
+end
+
 describe Saulabs::Reportable::ReportCache do
 
   before do

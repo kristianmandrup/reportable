@@ -1,9 +1,30 @@
-require File.join(File.dirname(File.dirname(File.expand_path(__FILE__))),'spec_helper')
+require 'spec_helper'
 
-describe Saulabs::Reportable::Report do
+Report = Saulabs::Reportable::DataMapper::Report
+ReportCache = Saulabs::Reportable::DataMapper::ReportCache
+Grouping = Saulabs::Reportable::DataMapper::Grouping
+ReportingPeriod = Saulabs::Reportable::DataMapper::ReportingPeriod
+
+def db_connection
+  DataMapper.repository(:default).connection
+end
+
+def create_reporting_period *args
+  ReportingPeriod.new *args    
+end
+
+def create_report *args
+  Report.new *args
+end
+
+def create_grouping *args
+  Grouping.new *args
+end
+
+describe Report do
 
   before do
-    @report = Saulabs::Reportable::Report.new(User, :registrations)
+    @report = create_report(User, :registrations)
     @now    = Time.now
     DateTime.stub!(:now).and_return(@now)
   end
@@ -19,7 +40,7 @@ describe Saulabs::Reportable::Report do
   describe '#run' do
 
     it 'should process the data with the report cache' do
-      Saulabs::Reportable::ReportCache.should_receive(:process).once.with(
+      ReportCache.should_receive(:process).once.with(
         @report,
         { :limit => 100, :grouping => @report.options[:grouping], :conditions => [], :live_data => false, :end_date => false }
       )
@@ -28,7 +49,7 @@ describe Saulabs::Reportable::Report do
     end
 
     it 'should process the data with the report cache when custom conditions are given' do
-      Saulabs::Reportable::ReportCache.should_receive(:process).once.with(
+      ReportCache.should_receive(:process).once.with(
         @report,
         { :limit => 100, :grouping => @report.options[:grouping], :conditions => { :some => :condition }, :live_data => false, :end_date => false }
       )
@@ -43,9 +64,9 @@ describe Saulabs::Reportable::Report do
     end
 
     it 'should use a custom grouping if one is specified' do
-      grouping = Saulabs::Reportable::Grouping.new(:month)
-      Saulabs::Reportable::Grouping.should_receive(:new).once.with(:month).and_return(grouping)
-      Saulabs::Reportable::ReportCache.should_receive(:process).once.with(
+      grouping = create_grouping(:month)
+      Grouping.should_receive(:new).once.with(:month).and_return(grouping)
+      ReportCache.should_receive(:process).once.with(
         @report,
         { :limit => 100, :grouping => grouping, :conditions => [], :live_data => false, :end_date => false }
       )
@@ -54,13 +75,13 @@ describe Saulabs::Reportable::Report do
     end
 
     it 'should return an array of the same length as the specified limit when :live_data is false' do
-      @report = Saulabs::Reportable::Report.new(User, :cumulated_registrations, :limit => 10, :live_data => false)
+      @report = create_report(User, :cumulated_registrations, :limit => 10, :live_data => false)
 
       @report.run.to_a.length.should == 10
     end
 
     it 'should return an array of the same length as the specified limit + 1 when :live_data is true' do
-      @report = Saulabs::Reportable::Report.new(User, :cumulated_registrations, :limit => 10, :live_data => true)
+      @report = create_report(User, :cumulated_registrations, :limit => 10, :live_data => true)
 
       @report.run.to_a.length.should == 11
     end
@@ -79,7 +100,7 @@ describe Saulabs::Reportable::Report do
         describe 'when :end_date is specified' do
 
           it 'should not raise a SQL duplicate key error after multiple runs' do
-            @report = Saulabs::Reportable::Report.new(User, :registrations,
+            @report = create_report(User, :registrations,
               :limit    => 2,
               :grouping => grouping,
               :end_date => Date.yesterday.to_datetime
@@ -92,8 +113,8 @@ describe Saulabs::Reportable::Report do
 
             before do
               @end_date = DateTime.now - 1.send(grouping)
-              @grouping = Saulabs::Reportable::Grouping.new(grouping)
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @grouping = create_grouping(grouping)
+              @report = create_report(User, :registrations,
                 :grouping => grouping,
                 :limit    => 10,
                 :end_date => @end_date
@@ -102,11 +123,11 @@ describe Saulabs::Reportable::Report do
             end
 
             it "should start with the reporting period (end_date - limit.#{grouping.to_s})" do
-              @result.first[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping, @end_date - 9.send(grouping)).date_time
+              @result.first[0].should == create_reporting_period(@grouping, @end_date - 9.send(grouping)).date_time
             end
 
             it "should end with the reporting period of the specified end date" do
-              @result.last[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping, @end_date).date_time
+              @result.last[0].should == create_reporting_period(@grouping, @end_date).date_time
             end
 
           end
@@ -120,9 +141,9 @@ describe Saulabs::Reportable::Report do
             describe 'the returned result' do
 
               before do
-                Saulabs::Reportable::ReportCache.delete_all
-                @grouping = Saulabs::Reportable::Grouping.new(grouping)
-                @report = Saulabs::Reportable::Report.new(User, :registrations,
+                ReportCache.delete_all
+                @grouping = create_grouping(grouping)
+                @report = create_report(User, :registrations,
                   :grouping  => grouping,
                   :limit     => 10,
                   :live_data => live_data
@@ -131,23 +152,23 @@ describe Saulabs::Reportable::Report do
               end
 
               it "should be an array starting reporting period (Time.now - limit.#{grouping.to_s})" do
-                @result.first[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping, Time.now - 10.send(grouping)).date_time
+                @result.first[0].should == create_reporting_period(@grouping, Time.now - 10.send(grouping)).date_time
               end
 
               if live_data
                 it "should be data ending with the current reporting period" do
-                  @result.last[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping).date_time
+                  @result.last[0].should == create_reporting_period(@grouping).date_time
                 end
               else
                 it "should be data ending with the reporting period before the current" do
-                  @result.last[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping).previous.date_time
+                  @result.last[0].should == create_reporting_period(@grouping).previous.date_time
                 end
               end
 
             end
 
             it 'should return correct data for aggregation :count' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation => :count,
                 :grouping    => grouping,
                 :limit       => 10,
@@ -163,7 +184,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct data for aggregation :sum' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation  => :sum,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -180,7 +201,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct data for aggregation :maximum' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation  => :maximum,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -197,7 +218,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct data for aggregation :minimum' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation  => :minimum,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -214,7 +235,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct data for aggregation :average' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation  => :average,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -231,7 +252,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct data for aggregation :count when custom conditions are specified' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation => :count,
                 :grouping    => grouping,
                 :limit       => 10,
@@ -247,7 +268,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct data for aggregation :sum when custom conditions are specified' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation  => :sum,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -264,7 +285,7 @@ describe Saulabs::Reportable::Report do
             end
 
             it 'should return correct results when run twice in a row with a higher limit on the second run' do
-              @report = Saulabs::Reportable::Report.new(User, :registrations,
+              @report = create_report(User, :registrations,
                 :aggregation => :count,
                 :grouping    => grouping,
                 :limit       => 10,
@@ -288,7 +309,7 @@ describe Saulabs::Reportable::Report do
             unless live_data
 
               it 'should return correct data for aggregation :count when :end_date is specified' do
-                @report = Saulabs::Reportable::Report.new(User, :registrations,
+                @report = create_report(User, :registrations,
                   :aggregation => :count,
                   :grouping    => grouping,
                   :limit       => 10,
@@ -303,7 +324,7 @@ describe Saulabs::Reportable::Report do
               end
 
               it 'should return correct data for aggregation :sum when :end_date is specified' do
-                @report = Saulabs::Reportable::Report.new(User, :registrations,
+                @report = create_report(User, :registrations,
                   :aggregation  => :sum,
                   :grouping     => grouping,
                   :value_column => :profile_visits,
@@ -319,7 +340,7 @@ describe Saulabs::Reportable::Report do
               end
 
               it 'should return correct results when run twice in a row with an end date further in the past on the second run' do
-                @report = Saulabs::Reportable::Report.new(User, :registrations,
+                @report = create_report(User, :registrations,
                   :aggregation => :count,
                   :grouping    => grouping,
                   :limit       => 10,
@@ -367,7 +388,7 @@ describe Saulabs::Reportable::Report do
         end
 
         it 'should return correct data for aggregation :count' do
-          @report = Saulabs::Reportable::Report.new(User, :registrations,
+          @report = create_report(User, :registrations,
             :aggregation => :count,
             :grouping    => :week,
             :limit       => 10
@@ -396,7 +417,7 @@ describe Saulabs::Reportable::Report do
         end
 
         it 'should return correct data for aggregation :count' do
-          @report = Saulabs::Reportable::Report.new(User, :registrations,
+          @report = create_report(User, :registrations,
             :aggregation => :count,
             :grouping    => :week,
             :limit       => 10
@@ -415,7 +436,7 @@ describe Saulabs::Reportable::Report do
     end
 
     after do
-      Saulabs::Reportable::ReportCache.destroy_all
+      ReportCache.destroy_all
     end
 
     after(:all) do
@@ -427,7 +448,7 @@ describe Saulabs::Reportable::Report do
   describe '#read_data' do
 
     it 'should invoke the aggregation method on the model' do
-      @report = Saulabs::Reportable::Report.new(User, :registrations, :aggregation => :count)
+      @report = create_report(User, :registrations, :aggregation => :count)
       User.should_receive(:count).once.and_return([])
 
       @report.send(:read_data, Time.now, 5.days.from_now, { :grouping => @report.options[:grouping], :conditions => [] })
@@ -446,7 +467,9 @@ describe Saulabs::Reportable::Report do
     before do
       @begin_at = Time.now
       @end_at = 5.days.from_now
-      @created_at_column_clause = "#{ActiveRecord::Base.connection.quote_table_name('users')}.#{ActiveRecord::Base.connection.quote_column_name('created_at')}"
+
+      # TODO:
+      @created_at_column_clause = "#{db_connection.quote_table_name('users')}.#{db_connection.quote_column_name('created_at')}"
     end
 
     it 'should return conditions for date_column BETWEEN begin_at and end_at only when no custom conditions are specified and both begin and end date are specified' do
@@ -478,8 +501,8 @@ describe Saulabs::Reportable::Report do
 
       conditions = @report.send(:setup_conditions, @begin_at, @end_at, custom_conditions)
       # cannot directly check for string equqlity here since hashes are not ordered and so there is no way to now in which order the conditions are added to the SQL clause
-      conditions[0].should =~ (/#{ActiveRecord::Base.connection.quote_table_name('users')}.#{ActiveRecord::Base.connection.quote_column_name('first_name')} = #{ActiveRecord::Base.connection.quote('first name')}/)
-      conditions[0].should =~ (/#{ActiveRecord::Base.connection.quote_table_name('users')}.#{ActiveRecord::Base.connection.quote_column_name('last_name')} = #{ActiveRecord::Base.connection.quote('last name')}/)
+      conditions[0].should =~ (/#{db_connection.quote_table_name('users')}.#{db_connection.quote_column_name('first_name')} = #{db_connection.quote('first name')}/)
+      conditions[0].should =~ (/#{db_connection.quote_table_name('users')}.#{db_connection.quote_column_name('last_name')} = #{db_connection.quote('last name')}/)
       conditions[0].should =~ (/#{@created_at_column_clause} BETWEEN \? AND \?/)
       conditions[1].should == @begin_at
       conditions[2].should == @end_at
@@ -488,7 +511,7 @@ describe Saulabs::Reportable::Report do
     it 'should correctly include custom conditions if they are specified as an Array' do
       custom_conditions = ['first_name = ? AND last_name = ?', 'first name', 'last name']
 
-      @report.send(:setup_conditions, @begin_at, @end_at, custom_conditions).should == ["first_name = #{ActiveRecord::Base.connection.quote('first name')} AND last_name = #{ActiveRecord::Base.connection.quote('last name')} AND #{@created_at_column_clause} BETWEEN ? AND ?", @begin_at, @end_at]
+      @report.send(:setup_conditions, @begin_at, @end_at, custom_conditions).should == ["first_name = #{db_connection.quote('first name')} AND last_name = #{db_connection.quote('last name')} AND #{@created_at_column_clause} BETWEEN ? AND ?", @begin_at, @end_at]
     end
 
   end

@@ -3,15 +3,15 @@ require 'spec_helper'
 ReportingPeriod = Saulabs::Reportable::DataMapper::ReportingPeriod
 Grouping = Saulabs::Reportable::DataMapper::Grouping
 
+def create_reporting_period *args
+  ReportingPeriod.new *args    
+end
+
+def create_grouping *args
+  Grouping.new *args
+end
+
 describe ReportingPeriod do
-
-  def create_reporting_period *args
-    ReportingPeriod.new *args    
-  end
-
-  def create_grouping *args
-    Grouping.new *args
-  end
 
   describe '#date_time' do
 
@@ -126,38 +126,38 @@ describe ReportingPeriod do
       grouping = create_grouping(:hour)
       grouping.stub!(:date_parts_from_db_string).and_return([2008, 1, 1, 12])
 
-      Saulabs::Reportable::ReportingPeriod.from_db_string(grouping, '').date_time.should == DateTime.new(2008, 1, 1, 12, 0, 0)
+      ReportingPeriod.from_db_string(grouping, '').date_time.should == DateTime.new(2008, 1, 1, 12, 0, 0)
     end
 
     it 'should return a reporting period with the date part only for grouping :day' do
       grouping = create_grouping(:day)
       grouping.stub!(:date_parts_from_db_string).and_return([2008, 1, 1])
 
-      Saulabs::Reportable::ReportingPeriod.from_db_string(grouping, '').date_time.should == Date.new(2008, 1, 1)
+      ReportingPeriod.from_db_string(grouping, '').date_time.should == Date.new(2008, 1, 1)
     end
 
     it 'should return a reporting period with the date part of the monday of the week the date is in for grouping :week' do
       grouping = create_grouping(:week)
       grouping.stub!(:date_parts_from_db_string).and_return([2008, 1])
 
-      Saulabs::Reportable::ReportingPeriod.from_db_string(grouping, '').date_time.should == Date.new(2007, 12, 31)
+      ReportingPeriod.from_db_string(grouping, '').date_time.should == Date.new(2007, 12, 31)
     end
 
     it 'should return a reporting period with the correct date and with day = 1 for grouping :month' do
       grouping = create_grouping(:month)
       grouping.stub!(:date_parts_from_db_string).and_return([2008, 1])
 
-      Saulabs::Reportable::ReportingPeriod.from_db_string(grouping, '').date_time.should == Date.new(2008, 1, 1)
+      ReportingPeriod.from_db_string(grouping, '').date_time.should == Date.new(2008, 1, 1)
     end
     
     it "should return a reporting period with the correct date when a Date object is passed" do
       grouping = create_grouping(:day)
-      Saulabs::Reportable::ReportingPeriod.from_db_string(grouping, Date.new(2008, 1, 1)).date_time.should == Date.new(2008, 1, 1)
+      ReportingPeriod.from_db_string(grouping, Date.new(2008, 1, 1)).date_time.should == Date.new(2008, 1, 1)
     end
     
     it "should return a reporting period with the correct date when a DateTime object is passed" do
       grouping = create_grouping(:hour)
-      Saulabs::Reportable::ReportingPeriod.from_db_string(grouping, DateTime.new(2008, 1, 1, 12, 0, 0)).date_time.should == DateTime.new(2008, 1, 1, 12, 0, 0)
+      ReportingPeriod.from_db_string(grouping, DateTime.new(2008, 1, 1, 12, 0, 0)).date_time.should == DateTime.new(2008, 1, 1, 12, 0, 0)
     end
 
   end

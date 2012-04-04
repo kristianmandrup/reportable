@@ -1,6 +1,31 @@
-require File.join(File.dirname(File.dirname(File.expand_path(__FILE__))),'spec_helper')
+require 'spec_helper'
 
-describe Saulabs::Reportable::Grouping do
+Report = Saulabs::Reportable::DataMapper::Report
+ReportCache = Saulabs::Reportable::DataMapper::ReportCache
+Grouping = Saulabs::Reportable::DataMapper::Grouping
+ReportingPeriod = Saulabs::Reportable::DataMapper::ReportingPeriod
+
+def db_connection
+  DataMapper.repository(:default).connection
+end
+
+def create_reporting_period *args
+  ReportingPeriod.new *args    
+end
+
+def create_report *args
+  Report.new *args
+end
+
+def create_report_cache *args
+  ReportCache.new *args
+end
+
+def create_grouping *args
+  Grouping.new *args
+end
+
+describe Grouping do
 
   describe '#new' do
 
@@ -15,7 +40,7 @@ describe Saulabs::Reportable::Grouping do
     describe 'for MySQL' do
 
       before do
-        ActiveRecord::Base.connection.stub!(:adapter_name).and_return('MySQL')
+        DataMapper.repository(:default).stub!(:adapter).and_return(DataMapper::Adapters::MysqlAdapter)
       end
 
       it 'should use DATE_FORMAT with format string "%Y/%m/%d/%H" for grouping :hour' do
@@ -39,7 +64,7 @@ describe Saulabs::Reportable::Grouping do
     describe 'for PostgreSQL' do
 
       before do
-        ActiveRecord::Base.connection.stub!(:adapter_name).and_return('PostgreSQL')
+        DataMapper.repository(:default).stub!(:adapter).and_return(DataMapper::Adapters::PostgreSQL)
       end
 
       for grouping in [:hour, :day, :week, :month] do
@@ -55,7 +80,7 @@ describe Saulabs::Reportable::Grouping do
     describe 'for SQLite3' do
 
       before do
-        ActiveRecord::Base.connection.stub!(:adapter_name).and_return('SQLite')
+        DataMapper.repository(:default).stub!(:adapter).and_return(DataMapper::Adapters::SQLite) 
       end
 
       it 'should use strftime with format string "%Y/%m/%d/%H" for grouping :hour' do
@@ -83,7 +108,7 @@ describe Saulabs::Reportable::Grouping do
     describe 'for SQLite3' do
 
       before do
-        ActiveRecord::Base.connection.stub!(:adapter_name).and_return('SQLite')
+        DataMapper.repository(:default).stub!(:adapter).and_return(DataMapper::Adapters::SQLite) 
       end
 
       for grouping in [[:hour, '2008/12/31/12'], [:day, '2008/12/31'], [:month, '2008/12']] do
@@ -106,7 +131,7 @@ describe Saulabs::Reportable::Grouping do
     describe 'for PostgreSQL' do
 
       before do
-        ActiveRecord::Base.connection.stub!(:adapter_name).and_return('PostgreSQL')
+        DataMapper.repository(:default).stub!(:adapter).and_return(DataMapper::Adapters::PostgreSQL)
       end
 
       it 'should split the date part of the string with "-" and read out the hour for grouping :hour' do
@@ -130,7 +155,7 @@ describe Saulabs::Reportable::Grouping do
     describe 'for MySQL' do
 
       before do
-        ActiveRecord::Base.connection.stub!(:adapter_name).and_return('MySQL')
+        DataMapper.repository(:default).stub!(:adapter).and_return(DataMapper::Adapters::MysqlAdapter)
       end
 
       for grouping in [[:hour, '2008/12/31/12'], [:day, '2008/12/31'], [:month, '2008/12']] do

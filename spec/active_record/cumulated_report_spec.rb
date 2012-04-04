@@ -1,9 +1,35 @@
 require 'spec_helper'
 
-describe Saulabs::Reportable::CumulatedReport do
+CumulatedReport = Saulabs::Reportable::DataMapper::CumulatedReport
+Report = Saulabs::Reportable::ActiveRecord::Report
+ReportCache = Saulabs::Reportable::ActiveRecord::ReportCache
+Grouping = Saulabs::Reportable::ActiveRecord::Grouping
+ReportingPeriod = Saulabs::Reportable::ActiveRecord::ReportingPeriod
+
+def db_connection
+  ActiveRecord::Base.connection
+end
+
+def create_cumulated_report *args
+  CumulatedReport.new *args
+end
+
+def create_reporting_period *args
+  ReportingPeriod.new *args    
+end
+
+def create_report *args
+  Report.new *args
+end
+
+def create_grouping *args
+  Grouping.new *args
+end
+
+describe CumulatedReport do
 
   before do
-    @report = Saulabs::Reportable::CumulatedReport.new(User, :cumulated_registrations)
+    @report = create_cumulated_report(User, :cumulated_registrations)
   end
 
   describe '#run' do
@@ -15,13 +41,13 @@ describe Saulabs::Reportable::CumulatedReport do
     end
 
     it 'should return an array of the same length as the specified limit when :live_data is false' do
-      @report = Saulabs::Reportable::CumulatedReport.new(User, :cumulated_registrations, :limit => 10, :live_data => false)
+      @report = create_cumulated_report(User, :cumulated_registrations, :limit => 10, :live_data => false)
 
       @report.run.length.should == 10
     end
 
     it 'should return an array of the same length as the specified limit + 1 when :live_data is true' do
-      @report = Saulabs::Reportable::CumulatedReport.new(User, :cumulated_registrations, :limit => 10, :live_data => true)
+      @report = create_cumulated_report(User, :cumulated_registrations, :limit => 10, :live_data => true)
 
       @report.run.length.should == 11
     end
@@ -45,8 +71,8 @@ describe Saulabs::Reportable::CumulatedReport do
             describe 'the returned result' do
 
               before do
-                @grouping = Saulabs::Reportable::Grouping.new(grouping)
-                @report = Saulabs::Reportable::CumulatedReport.new(User, :cumulated_registrations,
+                @grouping = create_grouping(grouping)
+                @report = create_cumulated_report(User, :cumulated_registrations,
                   :grouping  => grouping,
                   :limit     => 10,
                   :live_data => live_data
@@ -55,23 +81,23 @@ describe Saulabs::Reportable::CumulatedReport do
               end
 
               it "should be an array starting reporting period (Time.now - limit.#{grouping.to_s})" do
-                @result.first[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping, Time.now - 10.send(grouping)).date_time
+                @result.first[0].should == create_reporting_period(@grouping, Time.now - 10.send(grouping)).date_time
               end
 
               if live_data
                 it "should be data ending with the current reporting period" do
-                  @result.last[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping).date_time
+                  @result.last[0].should == create_reporting_period(@grouping).date_time
                 end
               else
                 it "should be data ending with the reporting period before the current" do
-                  @result.last[0].should == Saulabs::Reportable::ReportingPeriod.new(@grouping).previous.date_time
+                  @result.last[0].should == create_reporting_period(@grouping).previous.date_time
                 end
               end
 
             end
 
             it 'should return correct data for aggregation :count' do
-              @report = Saulabs::Reportable::CumulatedReport.new(User, :registrations,
+              @report = create_cumulated_report(User, :registrations,
                 :aggregation => :count,
                 :grouping    => grouping,
                 :limit       => 10,
@@ -87,7 +113,7 @@ describe Saulabs::Reportable::CumulatedReport do
             end
 
             it 'should return correct data for aggregation :sum' do
-              @report = Saulabs::Reportable::CumulatedReport.new(User, :registrations,
+              @report = create_cumulated_report(User, :registrations,
                 :aggregation  => :sum,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -104,7 +130,7 @@ describe Saulabs::Reportable::CumulatedReport do
             end
 
             it 'should return correct data for aggregation :count when custom conditions are specified' do
-              @report = Saulabs::Reportable::CumulatedReport.new(User, :registrations,
+              @report = create_cumulated_report(User, :registrations,
                 :aggregation => :count,
                 :grouping    => grouping,
                 :limit       => 10,
@@ -120,7 +146,7 @@ describe Saulabs::Reportable::CumulatedReport do
             end
 
             it 'should return correct data for aggregation :sum when custom conditions are specified' do
-              @report = Saulabs::Reportable::CumulatedReport.new(User, :registrations,
+              @report = create_cumulated_report(User, :registrations,
                 :aggregation  => :sum,
                 :grouping     => grouping,
                 :value_column => :profile_visits,
@@ -149,7 +175,7 @@ describe Saulabs::Reportable::CumulatedReport do
     end
 
     after(:each) do
-      Saulabs::Reportable::ReportCache.destroy_all
+      ReportCache.destroy_all
     end
 
   end

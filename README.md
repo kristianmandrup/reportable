@@ -83,34 +83,25 @@ Or something similar... The _$(img_var)_ here wraps the DOM element as a jQuery 
 Save report image to server
 ---------------------------
 
-It is oten useful to asynchronously upload one or more graphs to the server in the background, later to be used in other pages or inserted in PDF reports or similar :)
+It is often useful to asynchronously upload one or more graphs to the server in the background, later to be used in other pages or inserted in PDF reports or similar :)
 
 A helper is provided to do this:
 
   <%= report_img_ajax_upload 'testCanvas', :path = 'reportable/img_upload' %>
 
-It is using this nice solution: http://stackoverflow.com/questions/7712497/how-to-upload-post-multiple-canvas-elements
+This solution uses HTML 5 features such as the latest XMLHttpRequest Level 2.
   
-On the server side, simply process the upload data in a #create method of a controller
-The following could perhaps be a template:
+On the server side, simply process the upload data in a #create method of a controller.
   
-    require "base64"
-
     module Reports
       class ImageUploader < ApplicationController
         def create
-          unencoded_image_data = Base64.decode64(response.body.read) # or read from img ?
-
-          # use request header info to generate unique filename we can use later
-          file_name = create_report_img_name(response.header)
-
-          File.open(file_name, 'wb') do |f|
-            f.write unencoded_image_data
-          end
+          # handle multipart data and parse request header
         end
 
         protected
 
+        # info extracted from request header
         def create_report_img_name(hash)
           name = [hash['user'], hash['report_id'], hash['graph_id']].join('-')
           File.join(path, "#{name}.#{hash['format']}"

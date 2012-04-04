@@ -1,40 +1,33 @@
 require 'saulabs/reportable/config'
 
 module Saulabs
-
   module Reportable
-
-    module ReportTagHelper
-
+    module ReportTagHelper      
       # get image in request.body.read of post action (typically create)
-      def report_img_ajax_upload dom_id, options = {:path = 'reportable/img_upload', :format => :png}
+      def report_img_ajax_upload dom_id, path = 'reportable/img_upload', options = {:browser => :chrome, :format => :png}
         type          = options[:type]
         name          = options[:name]
         user          = options[:user]
         report_id     = options[:report_id]
         graph_id      = options[:graph_id]
         format        = options[:format]
+        browser       = options[:browser]
 
-# Use FormData to send files. Allows to upload files in binary format instead of base64 encoded.
+        progressbar   = options[:progressbar] || 'nil'
 
-# var formData = new FormData;
+        parameters = {
+          'type'      => type,      'name'     => name, 'user' => user, 
+          'report_id' => report_id, 'graph_id' => graph_id
+        }..to_s.gsub(/\"/, "'")
 
-# Firefox
-#     var file = canvas.mozGetAsFile('image.jpg');
-#     formData.append(file);
+        %Q{var bb = new Blobber.builder;
+bb.append(Blobber.canvas2Blob(canvas, '#{browser}'));
+var image = bb.getBlob('image/#{format}');
+Blobber.upload(image, '#{path}', #{parameters}, #{progressbar});
+}
 
-# In Chrome use BlobBuilder to convert base64 into blob (see dataURItoBlob function from this question):
+# On server use files collection of request (multipart) or similar
 
-#     var blob = dataURItoBlob(canvas.toDataURL('image/jpg'));
-#     formData.append(blob);
-
-#     var xhr = new XMLHttpRequest;
-#     xhr.open('POST', 'upload.ashx', false);
-#     xhr.send(formData);
-
-# On server use files collection of request: Request.Files[0].SaveAs(...);
-
-        raise "Use: http://stackoverflow.com/questions/7712497/how-to-upload-post-multiple-canvas-elements"
       end
 
       # Prompt the user to save the image as PNG.

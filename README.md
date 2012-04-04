@@ -75,32 +75,22 @@ Save Report as Image file
 Return DOM img element variable
 -------------------------------
 
-  <%= $('.container').append($(" + report_to_img_var(:google) + ")); %>
+  <%= content_tag :script, report_to_dom_img(:type => :google, :img_var => 'report1') %>
+  <%= $('.img_container').append($('report1')); %>
 
-Or something similar... The _$(img_var)_ should wrap the DOM element as a jQuery compatible element for use with the jQuery API.
+Or something similar... The _$(img_var)_ here wraps the DOM element as a jQuery compatible element for use with the jQuery API.
 
 Save report image to server
 ---------------------------
 
-From: http://permadi.com/blog/2010/10/html5-saving-canvas-image-data-using-php-and-ajax/
-
-To save the image to the server as raw image data:
-
-  var canvasData = testCanvas.toDataURL("image/png");
-  var ajax = new XMLHttpRequest();
-  ajax.open("POST",'reports/image_uploader',false);
-  ajax.setRequestHeader('Content-Type', 'application/upload');
-  ajax.setRequestHeader('format', 'png');
-  ajax.setRequestHeader('user', 'mikey');
-  ajax.setRequestHeader('name', 'my-report');
-  ajax.setRequestHeader('report-id', '1');
-  ajax.setRequestHeader('graph-id', '3');
-  ajax.send(canvasData );  
+It is oten useful to asynchronously upload one or more graphs to the server in the background, later to be used in other pages or inserted in PDF reports or similar :)
 
 A helper is provided to do this:
 
-  <%= report_img_server_upload 'testCanvas', :path = 'reportable/img_upload' %>
+  <%= report_img_ajax_upload 'testCanvas', :path = 'reportable/img_upload' %>
 
+It is using this nice solution: http://stackoverflow.com/questions/7712497/how-to-upload-post-multiple-canvas-elements
+  
 On the server side, simply process the upload data in a #create method of a controller
 The following could perhaps be a template:
   
@@ -109,7 +99,7 @@ The following could perhaps be a template:
     module Reports
       class ImageUploader < ApplicationController
         def create
-          unencoded_image_data = Base64.decode64(response.body.read)
+          unencoded_image_data = Base64.decode64(response.body.read) # or read from img ?
 
           # use request header info to generate unique filename we can use later
           file_name = create_report_img_name(response.header)
@@ -122,7 +112,7 @@ The following could perhaps be a template:
         protected
 
         def create_report_img_name(hash)
-          name = [hash['user'], hash['report-id'], hash['graph-id']].join('-')
+          name = [hash['user'], hash['report_id'], hash['graph_id']].join('-')
           File.join(path, "#{name}.#{hash['format']}"
         end
       end

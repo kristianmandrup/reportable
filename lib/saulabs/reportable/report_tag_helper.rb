@@ -6,58 +6,38 @@ module Saulabs
 
     module ReportTagHelper
 
-      # require qq.fileuploader (see vendor/assets/javascript)
-      def report_photo_uploader dom_id
-        %Q{
-var photo_uploader = new qq.FileUploader({
-  element: document.getElementById('#{dom_id}'),
-  multiple: true,
-  action: '/assets',
-  allowedExtensions: ['png', 'gif', 'jpg', 'jpeg'],
-  sizeLimit: 2097152,
-  params: {assetable_type: 'Report', klass: 'Picture', collection: true}
-});
-}
-      end
-
       # get image in request.body.read of post action (typically create)
-      def report_img_server_upload dom_id, options = {:path = 'reportable/img_upload', :format => :png}
-          type          = options[:type]
-          name          = options[:name]
-          user          = options[:user]
-          report_id     = options[:report_id]
-          graph_id      = options[:graph_id]
-          format        = options[:format]
+      def report_img_ajax_upload dom_id, options = {:path = 'reportable/img_upload', :format => :png}
+        type          = options[:type]
+        name          = options[:name]
+        user          = options[:user]
+        report_id     = options[:report_id]
+        graph_id      = options[:graph_id]
+        format        = options[:format]
 
-          %Q{var canvasData = #{dom_id}.toDataURL("image/#{format}");
-var ajax = new XMLHttpRequest();
-ajax.open("POST",'#{path}',false);
-ajax.setRequestHeader('Content-Type', 'application/upload');
-ajax.setRequestHeader('name', '#{file_name}');
-ajax.setRequestHeader('user', '#{user}');
-ajax.setRequestHeader('format', '#{format}');
-ajax.setRequestHeader('report-number', '#{report_id}');
-ajax.setRequestHeader('report-type', '#{type}');
-ajax.setRequestHeader('graph-number', '#{graph_id}');
-ajax.send(canvasData);
-        }
+# Use FormData to send files. Allows to upload files in binary format instead of base64 encoded.
+
+# var formData = new FormData;
+
+# Firefox
+#     var file = canvas.mozGetAsFile('image.jpg');
+#     formData.append(file);
+
+# In Chrome use BlobBuilder to convert base64 into blob (see dataURItoBlob function from this question):
+
+#     var blob = dataURItoBlob(canvas.toDataURL('image/jpg'));
+#     formData.append(blob);
+
+#     var xhr = new XMLHttpRequest;
+#     xhr.open('POST', 'upload.ashx', false);
+#     xhr.send(formData);
+
+# On server use files collection of request: Request.Files[0].SaveAs(...);
+
+        raise "Use: http://stackoverflow.com/questions/7712497/how-to-upload-post-multiple-canvas-elements"
       end
 
-      # Will save image or return <img> element variable (default: save)
-      # Options:
-      #   - type (report type, either google, raphael, or flot - default: raphael)
-      #   - format (image format (mime code) - default: png)
-      #   - as_element (create and return <img> element - default: false)
-      #   - scale (true|false)
-      #   - width (for scaling)
-      #   - height (for scaling)
-      #   - img_var (var name to use for image element returned - override default: oImg_[format]_[type])
-      def report_to_image options = {:type => :raphael, :format => :png}
-        options = report_options(options)
-        canvas2img options[:dom_id], options
-      end
-
-      # will prompt the user to save the image as PNG.
+      # Prompt the user to save the image as PNG.
       # Options:
       #   - type (report type, either google, raphael, or flot - default: raphael)
       #   - format (image format (mime code) - default: png)
@@ -65,20 +45,18 @@ ajax.send(canvasData);
       #   - width (for scaling)
       #   - height (for scaling)
       def report_to_img_save options = {:type => :raphael, :format => :png}
-        options = report_options(options)
-        canvas2img options[:dom_id], options.merge(:as_element => false)
+        report_to_image options.merge(:as_element => false)
       end
 
-      # Will return the image variable name for the image as an <img> element
+      # Create <img> DOM element in a variable
       # Options:
       #   - type (report type, either google, raphael, or flot - default: raphael)
       #   - format (image format (mime code) - default: png)
       #   - scale (true|false)
       #   - width (for scaling)
       #   - height (for scaling)
-      def report_to_img_var options = {:type => :raphael, :img => :png}
-        options = report_options(options)
-        canvas2img options[:dom_id], options.merge(:as_element => true)
+      def report_to_dom_img options = {:type => :raphael, :img => :png}
+        report_to_image options.merge(:as_element => true)
       end
         
       # Renders a sparkline with the given data using the google drawing api.
@@ -242,18 +220,31 @@ ajax.send(canvasData);
 
       protected
 
+      # Save image or create <img> DOM element in a variable (default: save)
+      # Options:
+      #   - type (report type, either google, raphael, or flot - default: raphael)
+      #   - format (image format (mime code) - default: png)
+      #   - as_element (create and return <img> element - default: false)
+      #   - scale (true|false)
+      #   - width (for scaling)
+      #   - height (for scaling)
+      #   - img_var (var name to use for image element returned - override default: oImg_[format]_[type])
+      def report_to_image options = {:type => :raphael, :format => :png}
+        options = report_options(options)
+        canvas2img options[:dom_id], options
+      end
+
       def canvas2img dom_id, options = {:format => :png)
         insert_as_element = options[:as_element] || false
         scale = options[:scale] || 'false'
         scaling = ',' + [options[:width], options[:height]].join(',') if scale == true
 
-        img_var = options[:img_var] || "oImg_#{format}_#{options[:type]}" if insert_as_element
+        img_var = options[:img_var] || "reportImg_#{format}_#{options[:type]}" if insert_as_element
         lside = img_var ? "var #{img_var} = " : ''
 
-        script = %Q{var oCanvas = document.getElementById('#{dom_id}');
-#{lside} Canvas2Image.saveAs#{options[:img].to_s.upcase}(oCanvas, #{insert_as_element}#{scaling});
-}
-        img_var ? img_var : script
+        %Q{var reportCanvas = document.getElementById('#{dom_id}');
+#{lside} Canvas2Image.saveAs#{options[:img].to_s.upcase}(reportCanvas, #{insert_as_element}#{scaling});
+}        
       end
 
       # return options with dom_id of Canvas element of last report
